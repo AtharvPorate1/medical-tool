@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-
+import 'regenerator-runtime/runtime';
 import "./globals.css";
 import {
   ClerkProvider,
