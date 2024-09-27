@@ -1,71 +1,93 @@
-"use client"
+"use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface DiagnosisResult {
-  id: string;
-  patientName: string;
-  patientGender: string;
-  patientAge: number;
-  symptoms: string;
-  analysis: string;
+interface ProbableDisease {
+  disease: string;
+  chance: number;
 }
 
-const ResultPage = () => {
-  const [result, setResult] = useState<DiagnosisResult | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const params = useParams();
+interface ImageAnalysis {
+  modality: string;
+  organ: string;
+  analysis: string;
+  abnormalities?: string;
+  treatment?: string;
+}
+
+interface AssessmentResult {
+  probableDiseases: ProbableDisease[];
+  remedies: string;
+  advice: string;
+  imageAnalysis: ImageAnalysis | null;
+}
+
+const ResultPage: React.FC = () => {
+  const [result, setResult] = useState<AssessmentResult | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (params.id) {
-      fetchResult(params.id as string);
-    }
-  }, [params.id]);
-
-  const fetchResult = async (diagnosisId: string) => {
-    try {
-      const response = await fetch(`/api/get-diagnosis/${diagnosisId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setResult(data);
-      } else {
-        console.error('Failed to fetch diagnosis result');
+    const data = searchParams.get('data');
+    if (data) {
+      try {
+        const parsedData = JSON.parse(decodeURIComponent(data));
+        setResult(parsedData);
+      } catch (error) {
+        console.error('Error parsing result data:', error);
       }
-    } catch (error) {
-      console.error('Error fetching diagnosis result:', error);
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  if (isLoading) {
-    return <div className="container mx-auto p-4">Loading...</div>;
-  }
+  }, [searchParams]);
 
   if (!result) {
-    return <div className="container mx-auto p-4">Diagnosis result not found.</div>;
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Diagnosis Result</h1>
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold">Patient Information</h2>
-          <p><strong>Name:</strong> {result.patientName}</p>
-          <p><strong>Gender:</strong> {result.patientGender}</p>
-          <p><strong>Age:</strong> {result.patientAge}</p>
-        </div>
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold">Symptoms</h2>
-          <p>{result.symptoms}</p>
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold">Analysis</h2>
-          <div className="whitespace-pre-wrap">{result.analysis}</div>
-        </div>
-      </div>
+    <div className="container mx-auto max-w-2xl p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">Assessment Results</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {result.probableDiseases.length > 0 && (
+            <div>
+              <h3 className="text-xl font-semibold">Probable Diseases:</h3>
+              <ul className="list-disc pl-5">
+                {result.probableDiseases.map((diseaseObj, index) => (
+                  <li key={index}>
+                    {diseaseObj.disease} - {diseaseObj.chance}%
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-xl font-semibold">Remedies:</h3>
+            <p>{result.remedies}</p>
+          </div>
+
+          <div>
+            <h3 className="text-xl font-semibold">Advice:</h3>
+            <p>{result.advice}</p>
+          </div>
+
+          {result.imageAnalysis && (
+            <div>
+              <h3 className="text-xl font-semibold">Image Analysis:</h3>
+              <ul className="list-disc pl-5">
+                <li>Modality: {result.imageAnalysis.modality}</li>
+                <li>Organ: {result.imageAnalysis.organ}</li>
+                <li>Analysis: {result.imageAnalysis.analysis}</li>
+                {result.imageAnalysis.abnormalities && <li>Abnormalities: {result.imageAnalysis.abnormalities}</li>}
+                {result.imageAnalysis.treatment && <li>Treatment: {result.imageAnalysis.treatment}</li>}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

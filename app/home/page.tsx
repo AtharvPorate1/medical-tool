@@ -1,4 +1,5 @@
-"use client"
+"use client";
+
 import React, { useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,36 +23,79 @@ interface ProbableDisease {
   chance: number;
 }
 
+interface ImageAnalysis {
+  modality: string;
+  organ: string;
+  analysis: string;
+  abnormalities?: string;
+  treatment?: string;
+}
+
 interface AssessmentResult {
   probableDiseases: ProbableDisease[];
   remedies: string;
   advice: string;
+  imageAnalysis: ImageAnalysis | null;
 }
 
-const HealthRiskAssessmentForm: React.FC = () => {
+const HealthRiskAssessmentPage: React.FC = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<FormInputs>();
-  const [documents, setDocuments] = useState<File[]>([]);
-  const [images, setImages] = useState<File[]>([]);
+  const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+
+  const analyzeImage = async (imageFile: File) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    try {
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze the image');
+      }
+
+      const { analysis }: { analysis: ImageAnalysis } = await response.json();
+      setImageAnalysis(analysis);
+    } catch (error) {
+      console.error('Error analyzing image:', error);
+      setError('Failed to analyze the image. Please try again.');
+    }
+  };
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
     setLoading(true);
     setError(null);
     setResult(null);
 
+    // Check if an image is provided and analyze it first
+    if (image) {
+      await analyzeImage(image);
+    }
+
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('gender', data.gender);
+    formData.append('age', data.age.toString());
+    formData.append('conversation', data.conversation);
+    if (imageAnalysis) {
+      formData.append('imageAnalysis', JSON.stringify(imageAnalysis));
+    }
+
     try {
-      const response = await fetch('/api/health-assessment', {
+      const response = await fetch('/api/health-insights', {
         method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        body: formData,
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to process the assessment');
+        throw new Error('Failed to process the health assessment');
       }
 
       const result: AssessmentResult = await response.json();
@@ -64,9 +108,9 @@ const HealthRiskAssessmentForm: React.FC = () => {
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, setFileState: React.Dispatch<React.SetStateAction<File[]>>) => {
-    if (event.target.files) {
-      setFileState(Array.from(event.target.files));
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setImage(event.target.files[0]);
     }
   };
 
@@ -116,13 +160,8 @@ const HealthRiskAssessmentForm: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="documents">Documents (Optional)</Label>
-              <Input id="documents" type="file" multiple onChange={(e) => handleFileChange(e, setDocuments)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="images">Images (Optional)</Label>
-              <Input id="images" type="file" multiple accept="image/*" onChange={(e) => handleFileChange(e, setImages)} />
+              <Label htmlFor="image">Medical Image (Optional)</Label>
+              <Input id="image" type="file" accept="image/*" onChange={handleImageChange} />
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -143,11 +182,24 @@ const HealthRiskAssessmentForm: React.FC = () => {
             </Alert>
           )}
 
+          {imageAnalysis && (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold">Image Analysis</h3>
+              <ul className="list-disc pl-5">
+                <li>Modality: {imageAnalysis.modality}</li>
+                <li>Organ: {imageAnalysis.organ}</li>
+                <li>Analysis: {imageAnalysis.analysis}</li>
+                {imageAnalysis.abnormalities && <li>Abnormalities: {imageAnalysis.abnormalities}</li>}
+                {imageAnalysis.treatment && <li>Treatment: {imageAnalysis.treatment}</li>}
+              </ul>
+            </div>
+          )}
+
           {result && (
             <div className="mt-8 space-y-4">
               <h3 className="text-xl font-semibold">Assessment Results</h3>
               
-              {result.probableDiseases.length > 0 ? (
+              {result.probableDiseases.length > 0 && (
                 <div>
                   <h4 className="text-lg font-medium">Probable Diseases:</h4>
                   <ul className="list-disc pl-5">
@@ -158,8 +210,6 @@ const HealthRiskAssessmentForm: React.FC = () => {
                     ))}
                   </ul>
                 </div>
-              ) : (
-                <p>No probable diseases found.</p>
               )}
 
               <div>
@@ -179,4 +229,4 @@ const HealthRiskAssessmentForm: React.FC = () => {
   );
 };
 
-export default HealthRiskAssessmentForm;
+export default HealthRiskAssessmentPage;
