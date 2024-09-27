@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { SignedOut, SignedIn, SignInButton, UserButton } from '@clerk/nextjs';
 
-const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
+const Navbar: React.FC = () => {
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,7 +62,12 @@ const Navbar = () => {
   );
 };
 
-const NavLink = ({ href, children }) => (
+interface NavLinkProps {
+  href: string;
+  children: React.ReactNode;
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ href, children }) => (
   <a
     href={href}
     className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
@@ -71,8 +76,8 @@ const NavLink = ({ href, children }) => (
   </a>
 );
 
-const MobileMenuButton = () => {
-  const [isOpen, setIsOpen] = useState(false);
+const MobileMenuButton: React.FC = () => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   return (
     <>
